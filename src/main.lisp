@@ -156,7 +156,7 @@ Example:
     uf2 conv firmware.bin [firmware.uf2]
     uf2 conv -d firmware.uf2 [firmware.bin]
 
-uf2 & bin convert tools (Common Lisp) v1.0.0
+uf2 & bin convert tools (Common Lisp) v0.0.1.0
 "
    stream))
 

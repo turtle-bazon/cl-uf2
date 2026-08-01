@@ -1,6 +1,6 @@
 (asdf:defsystem "cl-uf2"
   :description "Microsoft UF2 & BIN format convert tools (Common Lisp)."
-  :version "1.0.0"
+  :version "0.0.1.0"
   :license "GPL-3.0"
   :author "cl-uf2"
   :depends-on ("iterate" "metabang-bind" "clingon")

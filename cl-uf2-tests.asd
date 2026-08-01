@@ -1,6 +1,6 @@
 (asdf:defsystem "cl-uf2-tests"
   :description "Test suite for cl-uf2."
-  :version "1.0.0"
+  :version "0.0.1.0"
   :license "GPL-3.0"
   :author "cl-uf2"
   :depends-on ("cl-uf2" "fiveam")

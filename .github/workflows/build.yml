@@ -70,7 +70,6 @@ jobs:
         run: |
           BIN=build/uf2
           if [ "$RUNNER_OS" = "Windows" ]; then
-            mv "$BIN" build/uf2.exe
             BIN=build/uf2.exe
           fi
           "$BIN" --version

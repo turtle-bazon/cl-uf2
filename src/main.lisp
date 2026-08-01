@@ -38,26 +38,32 @@ payload-size block-totals)."
                          :element-type '(unsigned-byte 8))
       (let* ((file-size (file-length in))
              (block-totals (ceiling file-size payload-size))
-             (buffer (make-array payload-size :element-type '(unsigned-byte 8)))
+             (buffer (make-array +read-buffer-size+ :element-type '(unsigned-byte 8)))
              (block (make-uf2-block :flags flags
                                     :block-totals block-totals
                                     :family-id family-id))
-             (address target-address))
+             (address target-address)
+             (block-no 0))
         (iter
-          (for block-no from 0)
           (for len := (read-sequence buffer in))
           (while (plusp len))
-          (for actual := (if (and fixed (< len payload-size)) len payload-size))
-          (setf (uf2-block-block-no block)       block-no
-                (uf2-block-target-address block) address
-                (uf2-block-payload-size block)   actual
-                (uf2-block-payload block)
-                (let ((payload (make-array actual :element-type '(unsigned-byte 8)
-                                                 :initial-element 0)))
-                  (replace payload buffer :end2 len)
-                  payload))
-          (write-sequence (encode-block block) out)
-          (incf address actual))
+          (iter
+            (for off from 0 by payload-size)
+            (while (< off len))
+            (for remaining := (- len off))
+            (for actual := (if (and fixed (< remaining payload-size))
+                               remaining payload-size))
+            (setf (uf2-block-block-no block)       block-no
+                  (uf2-block-target-address block) address
+                  (uf2-block-payload-size block)   actual
+                  (uf2-block-payload block)
+                  (let ((payload (make-array actual :element-type '(unsigned-byte 8)
+                                                   :initial-element 0)))
+                    (replace payload buffer :start2 off :end2 (+ off remaining))
+                    payload))
+            (write-sequence (encode-block block) out)
+            (incf address actual)
+            (incf block-no)))
         (finish-output out)
         (values file-size (file-length out) family-id target-address
                 flags payload-size block-totals)))))

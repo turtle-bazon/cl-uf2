@@ -17,6 +17,7 @@
 (defconstant +payload-max+     476 "Maximum UF2 block payload size in bytes.")
 (defconstant +block-size+      512 "Total UF2 block size in bytes.")
 (defconstant +default-payload+ 256 "Default UF2 block payload size in bytes.")
+(defconstant +read-buffer-size+ 4096 "Read buffer size in bytes for conversions.")
 
 ;;;; Little-endian unsigned 32-bit helpers.
 

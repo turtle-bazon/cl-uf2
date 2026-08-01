@@ -265,14 +265,14 @@ extension, the extension is doubled (.uf2.uf2 / .bin.bin)."
 
 (defun print-usage (&optional (stream *standard-output*))
   (write-string
-   "Usage: uf2 to-uf2 [options] <INPUT> [<OUTPUT>]
-       uf2 from-uf2 [options] <INPUT> [<OUTPUT>]
+   "Usage: uf2 pack [options] <INPUT> [<OUTPUT>]
+       uf2 dump [options] <INPUT> [<OUTPUT>]
        uf2 info <INPUT>
 
-to-uf2 converts a BIN file to UF2; from-uf2 converts a UF2 file to BIN;
+pack packs a BIN file into UF2 blocks; dump unpacks a UF2 file back to BIN;
 info displays header information from a UF2 file.
 
-Options for to-uf2:
+Options for pack:
     flags (-f)     Set UF2 block flags, default is 0x00000000;
     address (-a)   Set target address, default is 0x00000000;
     identify (-i)  Set family identify, default is 0x00000000;
@@ -281,7 +281,7 @@ Options for to-uf2:
     force (-y)     force overwriting an existing output file;
     help (-h)      Print usage massages;
 
-Options for from-uf2:
+Options for dump:
     force (-y)     force overwriting an existing output file;
     help (-h)      Print usage massages;
 
@@ -291,8 +291,8 @@ Options for info:
     help (-h)      Print usage massages;
 
 Example:
-    uf2 to-uf2 firmware.bin [firmware.uf2]
-    uf2 from-uf2 firmware.uf2 [firmware.bin]
+    uf2 pack firmware.bin [firmware.uf2]
+    uf2 dump firmware.uf2 [firmware.bin]
     uf2 info firmware.uf2
 
 "
@@ -378,13 +378,13 @@ Example:
       (format *error-output* "~A~%" e)
       (clingon:exit 255))))
 
-(defun to-uf2-handler (cmd)
+(defun pack-handler (cmd)
   (conversion-handler nil cmd))
 
-(defun from-uf2-handler (cmd)
+(defun dump-handler (cmd)
   (conversion-handler t cmd))
 
-(defun make-to-uf2-options ()
+(defun make-pack-options ()
   (list
    (clingon:make-option :list
                         :short-name #\f
@@ -421,7 +421,7 @@ Example:
                         :description "Print usage massages;"
                         :key :help)))
 
-(defun make-from-uf2-options ()
+(defun make-dump-options ()
   (list
    (clingon:make-option :flag
                         :short-name #\y
@@ -433,19 +433,19 @@ Example:
                         :description "Print usage massages;"
                         :key :help)))
 
-(defun make-to-uf2-command ()
+(defun make-pack-command ()
   (clingon:make-command
-   :name "to-uf2"
+   :name "pack"
    :description "Convert a BIN file to UF2."
-   :options (make-to-uf2-options)
-   :handler #'to-uf2-handler))
+   :options (make-pack-options)
+   :handler #'pack-handler))
 
-(defun make-from-uf2-command ()
+(defun make-dump-command ()
   (clingon:make-command
-   :name "from-uf2"
+   :name "dump"
    :description "Convert a UF2 file to BIN."
-   :options (make-from-uf2-options)
-   :handler #'from-uf2-handler))
+   :options (make-dump-options)
+   :handler #'dump-handler))
 
 (defun info-handler (cmd)
   (handler-case
@@ -489,7 +489,7 @@ Example:
 
 (defun make-sub-commands ()
   "Return the list of uf2 sub-commands. Additional tools are added here."
-  (list (make-to-uf2-command) (make-from-uf2-command) (make-info-command)))
+  (list (make-pack-command) (make-dump-command) (make-info-command)))
 
 (defun make-uf2-command ()
   (clingon:make-command

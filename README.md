@@ -4,7 +4,7 @@ Common Lisp command line converter between Microsoft [UF2](https://github.com/mi
 and raw binary (BIN) formats.
 
 The executable is named `uf2` and exposes sub-commands:
-`to-uf2`, `from-uf2` and `info`.
+`pack`, `dump` and `info`.
 
 ## Build
 
@@ -23,16 +23,16 @@ quickloads the `cl-uf2-tests` system and exits non-zero on any failure.
 ## Usage
 
 ```
-uf2 to-uf2 [options] <INPUT> [<OUTPUT>]
-uf2 from-uf2 [options] <INPUT> [<OUTPUT>]
+uf2 pack [options] <INPUT> [<OUTPUT>]
+uf2 dump [options] <INPUT> [<OUTPUT>]
 uf2 info <INPUT>
 ```
 
-- `to-uf2` converts a BIN file to UF2.
-- `from-uf2` converts a UF2 file to BIN.
+- `pack` wraps a BIN file into UF2 blocks.
+- `dump` unwraps a UF2 file back to BIN.
 - `info` displays header information from a UF2 file.
 
-### `to-uf2` options
+### `pack` options
 
 | Option                | Description                                              |
 |-----------------------|----------------------------------------------------------|
@@ -44,7 +44,7 @@ uf2 info <INPUT>
 | `-y`, `--force`       | Overwrite an existing output file without prompting.     |
 | `-h`                  | Print usage messages.                                    |
 
-### `from-uf2` options
+### `dump` options
 
 | Option                | Description                                              |
 |-----------------------|----------------------------------------------------------|
@@ -64,7 +64,7 @@ prints all blocks. With `-m`, the output is a JSON object with the file
 metadata (`path`, `file_size`, `block_size`, `block_count`, `uniform`), the
 `first_block` summary and the full `blocks` array.
 
-The `to-uf2`, `from-uf2` and `info` commands also accept `--help` and `--version`.
+The `pack`, `dump` and `info` commands also accept `--help` and `--version`.
 
 Numeric values follow `strtoul` base-0 rules: `0x`/`0X` prefix for hexadecimal,
 a leading `0` for octal, otherwise decimal. Hex digits are case-insensitive.
@@ -76,16 +76,16 @@ Use `--force` for non-interactive use.
 ### Examples
 
 ```sh
-uf2 to-uf2 firmware.bin firmware.uf2         # BIN -> UF2 (default address 0x0)
-uf2 to-uf2 -a 0x2000 -i 0xADA52840 in.bin    # BIN -> UF2 with address and family ID
-uf2 from-uf2 firmware.uf2 firmware.bin       # UF2 -> BIN
-uf2 info firmware.uf2                        # show block header information
-uf2 info -a firmware.uf2                     # show every block
-uf2 info -m firmware.uf2 > info.json         # machine-readable JSON output
+uf2 pack firmware.bin firmware.uf2             # BIN -> UF2 (default address 0x0)
+uf2 pack -a 0x2000 -i 0xADA52840 in.bin        # BIN -> UF2 with address and family ID
+uf2 dump firmware.uf2 firmware.bin             # UF2 -> BIN
+uf2 info firmware.uf2                          # show block header information
+uf2 info -a firmware.uf2                       # show every block
+uf2 info -m firmware.uf2 > info.json           # machine-readable JSON output
 ```
 
 When `OUTPUT` is omitted, the name is derived from the input with a `.uf2` (for
-`to-uf2`) or `.bin` (for `from-uf2`) extension; an input that already ends in
+`pack`) or `.bin` (for `dump`) extension; an input that already ends in
 the target extension gets a doubled one (`.uf2.uf2`, `.bin.bin`).
 
 ### Exit codes

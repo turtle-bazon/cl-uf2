@@ -73,8 +73,8 @@ jobs:
             BIN=build/uf2.exe
           fi
           "$BIN" --version
-          "$BIN" to-uf2 -a 0x2000 -i 0xADA52840 cl-uf2.asd "$RUNNER_TEMP/smoke.uf2"
-          "$BIN" from-uf2 "$RUNNER_TEMP/smoke.uf2" "$RUNNER_TEMP/smoke.bin"
+          "$BIN" pack -a 0x2000 -i 0xADA52840 cl-uf2.asd "$RUNNER_TEMP/smoke.uf2"
+          "$BIN" dump "$RUNNER_TEMP/smoke.uf2" "$RUNNER_TEMP/smoke.bin"
           "$BIN" info "$RUNNER_TEMP/smoke.uf2" > /dev/null
 
       - name: Upload artifact

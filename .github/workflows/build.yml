@@ -7,34 +7,77 @@ on:
 
 jobs:
   build:
-    # Use the prebuilt image from docker/Dockerfile: a modern SBCL compiled
-    # against Debian bullseye's old glibc, so the resulting binary runs on
-    # older Linux distributions too. Publish with publish-image.yml.
-    runs-on: ubuntu-latest
-    container: ghcr.io/${{ github.repository }}/uf2-sbcl:latest
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux: build inside the old-glibc SBCL image so the binary runs
+          # on older distributions (glibc is only forward-compatible).
+          - os: ubuntu-latest
+            container: ghcr.io/turtle-bazon/sbcl-bullseye-build/sbcl-bullseye:latest
+            artifact: uf2-linux-x86_64
+          - os: macos-latest
+            artifact: uf2-macos
+          - os: windows-latest
+            artifact: uf2-windows-x86_64
     steps:
+      - name: Install git (Linux container)
+        if: runner.os == 'Linux'
+        run: apt-get update && apt-get install -y --no-install-recommends git
+
       - uses: actions/checkout@v4
 
+      - name: Install SBCL (macOS)
+        if: runner.os == 'macOS'
+        run: brew install sbcl
+
+      - name: Install SBCL (Windows)
+        if: runner.os == 'Windows'
+        run: choco install sbcl -y --no-progress
+
+      - name: Set up Quicklisp
+        shell: bash
+        run: |
+          curl -fsSL https://beta.quicklisp.org/quicklisp.lisp -o "$RUNNER_TEMP/quicklisp.lisp"
+          sbcl --non-interactive --load "$RUNNER_TEMP/quicklisp.lisp" \
+            --eval '(quicklisp-quickstart:install)'
+          echo '(load "~/quicklisp/setup.lisp")' >> "$HOME/.sbclrc"
+
       - name: Build
-        run: make build
+        shell: bash
+        run: sbcl --non-interactive --load build.lisp
 
       - name: Test
-        run: make test
+        shell: bash
+        run: |
+          sbcl --non-interactive \
+            --eval '(ql:quickload "cl-uf2-tests")' \
+            --eval '(unless (cl-uf2-tests:run-tests) (uiop:quit 1))'
 
-      - name: Check glibc floor
+      - name: Check glibc floor (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
         run: |
           echo "required GLIBC: $(objdump -T build/uf2 | grep -o 'GLIBC_[0-9.]*' | sort -V | uniq | tail -1)"
           ldd build/uf2
 
       - name: Smoke test
+        shell: bash
         run: |
-          ./build/uf2 --version
-          ./build/uf2 conv -a 0x2000 -i 0xADA52840 cl-uf2.asd /tmp/smoke.uf2
-          ./build/uf2 conv -d /tmp/smoke.uf2 /tmp/smoke.bin
-          ls -la /tmp/smoke.uf2 /tmp/smoke.bin
+          BIN=build/uf2
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            mv "$BIN" build/uf2.exe
+            BIN=build/uf2.exe
+          fi
+          "$BIN" --version
+          "$BIN" conv -a 0x2000 -i 0xADA52840 cl-uf2.asd "$RUNNER_TEMP/smoke.uf2"
+          "$BIN" conv -d "$RUNNER_TEMP/smoke.uf2" "$RUNNER_TEMP/smoke.bin"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: uf2-linux-x86_64
-          path: build/uf2
+          name: ${{ matrix.artifact }}
+          path: build/uf2*
+          if-no-files-found: error

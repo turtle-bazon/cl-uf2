@@ -1,5 +1,5 @@
 (asdf:defsystem "cl-uf2"
-  :description "Microsoft UF2 & BIN format convert tools (Common Lisp)."
+  :description "Microsoft UF2 & BIN format convert tools."
   :version "0.0.1.2"
   :license "GPL-3.0"
   :author "cl-uf2"

@@ -133,14 +133,7 @@ extension, the extension is doubled (.uf2.uf2 / .bin.bin)."
 
 (defun print-summary (title input-size output-size family-id target-address
                             flags payload-size block-totals)
-  (format t "  ~A~%~
-        Binary Size: ~D~%~
-    Family Identify: 0x~8,'0X~%~
-     Target Address: 0x~8,'0X~%~
-           UF2 Size: ~D~%~
-          UF2 Flags: 0x~8,'0X~%~
-     UF2 Block Size: ~D~%~
-   UF2 Block Counts: ~D~%~%"
+  (format t "  ~A~%Binary Size: ~D~%Family Identify: 0x~8,'0X~%Target Address: 0x~8,'0X~%UF2 Size: ~D~%UF2 Flags: 0x~8,'0X~%UF2 Block Size: ~D~%UF2 Block Counts: ~D~%~%"
           title input-size family-id target-address output-size
           flags payload-size block-totals))
 

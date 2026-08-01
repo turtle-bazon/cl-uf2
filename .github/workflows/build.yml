@@ -44,6 +44,8 @@ jobs:
           sbcl --non-interactive --load "$RUNNER_TEMP/quicklisp.lisp" \
             --eval '(quicklisp-quickstart:install)'
           echo '(load "~/quicklisp/setup.lisp")' >> "$HOME/.sbclrc"
+          # Make ASDF find the project's .asd files in the checkout directory.
+          echo "(push '*default-pathname-defaults* asdf:*central-registry*)" >> "$HOME/.sbclrc"
 
       - name: Build
         shell: bash

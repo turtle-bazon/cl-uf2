@@ -47,14 +47,23 @@
   family-id
   payload)
 
+(defstruct (uf2-file-info (:constructor make-uf2-file-info))
+  "Summary of a scanned UF2 file: header fields of the first block,
+the number of blocks, whether the blocks are uniform, and the whole
+list of block headers."
+  path
+  file-size
+  uniform-p
+  blocks)
+
 (defun block-check-p (octets &optional (start 0))
   "Return non-NIL when OCTETS at START carry the UF2 magic numbers."
   (and (= (read-u32-le octets start) +magic-start0+)
        (= (read-u32-le octets (+ start 4)) +magic-start1+)
        (= (read-u32-le octets (+ start +header-size+ +payload-max+)) +magic-end+)))
 
-(defun decode-block (octets &optional (start 0))
-  "Decode a 512-byte UF2 block held in OCTETS at START.
+(defun decode-block-header (octets &optional (start 0))
+  "Decode the header of a 512-byte UF2 block held in OCTETS at START.
 Signals an error when the magic numbers or the payload size are invalid."
   (unless (block-check-p octets start)
     (error "Illegal UF2 file, block not UF2 block !"))
@@ -67,9 +76,16 @@ Signals an error when the magic numbers or the payload size are invalid."
      :payload-size   payload-size
      :block-no       (read-u32-le octets (+ start 20))
      :block-totals   (read-u32-le octets (+ start 24))
-     :family-id      (read-u32-le octets (+ start 28))
-     :payload        (subseq octets (+ start +header-size+)
-                                  (+ start +header-size+ payload-size)))))
+     :family-id      (read-u32-le octets (+ start 28)))))
+
+(defun decode-block (octets &optional (start 0))
+  "Decode a 512-byte UF2 block held in OCTETS at START.
+Signals an error when the magic numbers or the payload size are invalid."
+  (let ((blk (decode-block-header octets start)))
+    (setf (uf2-block-payload blk)
+          (subseq octets (+ start +header-size+)
+                       (+ start +header-size+ (uf2-block-payload-size blk))))
+    blk))
 
 (defun encode-block (block)
   "Encode BLOCK into a fresh 512-byte octet vector.

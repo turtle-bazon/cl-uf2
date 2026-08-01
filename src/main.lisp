@@ -105,6 +105,66 @@ payload-size block-totals)."
         (values (file-length in) (file-length out) family-id base-address
                 flags payload-size block-totals)))))
 
+(defun uf2-info (input-path)
+  "Scan the UF2 file at INPUT-PATH and collect the file summary into a
+fresh uf2-file-info structure: block headers, file size and whether
+all blocks share the same flags, payload size and family id."
+  (with-open-file (in input-path :direction :input :element-type '(unsigned-byte 8))
+    (unless (zerop (mod (file-length in) +block-size+))
+      (error "Illegal UF2 file, file size must be block size align (512 bytes) !"))
+    (let ((buffer (make-array +read-buffer-size+ :element-type '(unsigned-byte 8)))
+          (blocks '()))
+      (iter
+        (for n := (read-sequence buffer in))
+        (while (plusp n))
+        (iter
+          (for off from 0 by +block-size+)
+          (while (< off n))
+          (push (decode-block-header buffer off) blocks)))
+      (let* ((blocks (nreverse blocks))
+             (first-block (first blocks))
+             (uniform-p (and first-block
+                             (every (lambda (b)
+                                      (and (= (uf2-block-flags b)
+                                              (uf2-block-flags first-block))
+                                           (= (uf2-block-payload-size b)
+                                              (uf2-block-payload-size first-block))
+                                           (= (uf2-block-family-id b)
+                                              (uf2-block-family-id first-block))))
+                                    blocks))))
+        (make-uf2-file-info
+         :path (namestring input-path)
+         :file-size (file-length in)
+         :uniform-p uniform-p
+         :blocks blocks)))))
+
+(defun print-uf2-info (info)
+  "Print a summary of the UF2 file described by INFO followed by a
+table of the first (up to 10) blocks."
+  (let* ((blocks (uf2-file-info-blocks info))
+         (n (length blocks))
+         (first-block (first blocks)))
+    (format t "  UF2 file: ~A~%" (uf2-file-info-path info))
+    (format t "Block Size: ~D~%Block Counts: ~D~%File Size: ~D~%"
+            +block-size+ n (uf2-file-info-file-size info))
+    (when first-block
+      (format t "Flags: 0x~8,'0X~%Target Address: 0x~8,'0X~%Payload Size: ~D~%Family Identify: 0x~8,'0X~%"
+              (uf2-block-flags first-block) (uf2-block-target-address first-block)
+              (uf2-block-payload-size first-block) (uf2-block-family-id first-block)))
+    (format t "Uniform blocks: ~A~%~%" (if (uf2-file-info-uniform-p info) "yes" "no"))
+    (format t "  Block  Address      Flags      Payload  Family~%")
+    (loop for b in blocks
+          for i from 0
+          while (< i 10)
+          do (format t "  ~5D  0x~8,'0X  0x~8,'0X  ~7D  0x~8,'0X~%"
+                     (uf2-block-block-no b)
+                     (uf2-block-target-address b)
+                     (uf2-block-flags b)
+                     (uf2-block-payload-size b)
+                     (uf2-block-family-id b)))
+    (when (> n 10)
+      (format t "  ... and ~D more blocks~%" (- n 10)))))
+
 ;;;; Output path handling.
 
 (defun prompt-overwrite (path)
@@ -152,11 +212,14 @@ extension, the extension is doubled (.uf2.uf2 / .bin.bin)."
 
 (defun print-usage (&optional (stream *standard-output*))
   (write-string
-   "Usage: uf2 conv [--dump] [--flags=<flags>] [--address=<address>] [--identify=<identify>]
-                [--size=<size>] [--fixed] [--help] <INPUT> [<OUTPUT>]
+   "Usage: uf2 to-uf2 [options] <INPUT> [<OUTPUT>]
+       uf2 from-uf2 [options] <INPUT> [<OUTPUT>]
+       uf2 info <INPUT>
 
-Options:
-    dump (-d)      Dump UF2 payload to binary;
+to-uf2 converts a BIN file to UF2; from-uf2 converts a UF2 file to BIN;
+info displays header information from a UF2 file.
+
+Options for to-uf2:
     flags (-f)     Set UF2 block flags, default is 0x00000000;
     address (-a)   Set target address, default is 0x00000000;
     identify (-i)  Set family identify, default is 0x00000000;
@@ -165,9 +228,14 @@ Options:
     force (-y)     force overwriting an existing output file;
     help (-h)      Print usage massages;
 
+Options for from-uf2 and info:
+    force (-y)     force overwriting an existing output file;
+    help (-h)      Print usage massages;
+
 Example:
-    uf2 conv firmware.bin [firmware.uf2]
-    uf2 conv -d firmware.uf2 [firmware.bin]
+    uf2 to-uf2 firmware.bin [firmware.uf2]
+    uf2 from-uf2 firmware.uf2 [firmware.bin]
+    uf2 info firmware.uf2
 
 "
    stream)
@@ -194,8 +262,7 @@ Example:
   (let ((address-str (clingon:getopt cmd :address))
         (identify-str (clingon:getopt cmd :identify))
         (size-str (clingon:getopt cmd :size)))
-    (list :dump (clingon:getopt cmd :dump)
-          :flags (parse-flags (clingon:getopt cmd :flags))
+    (list :flags (parse-flags (clingon:getopt cmd :flags))
           :address (if address-str
                        (parse-option-number address-str "Illegal or unknown address !")
                        0)
@@ -229,14 +296,13 @@ Example:
                   input-size output-size family-id target-address
                   flg psize totals)))
 
-(defun conv-handler (cmd)
+(defun conversion-handler (dump cmd)
   (handler-case
       (progn
         (when (clingon:getopt cmd :help)
           (print-usage)
           (clingon:exit 0))
         (let* ((settings (options->settings cmd))
-               (dump (getf settings :dump))
                (args (clingon:command-arguments cmd))
                (input (ensure-input-file (first args)))
                (output (or (second args) (default-output-path input dump))))
@@ -254,13 +320,14 @@ Example:
       (format *error-output* "~A~%" e)
       (clingon:exit 255))))
 
-(defun make-conv-options ()
+(defun to-uf2-handler (cmd)
+  (conversion-handler nil cmd))
+
+(defun from-uf2-handler (cmd)
+  (conversion-handler t cmd))
+
+(defun make-to-uf2-options ()
   (list
-   (clingon:make-option :flag
-                        :short-name #\d
-                        :long-name "dump"
-                        :description "Dump UF2 payload to binary;"
-                        :key :dump)
    (clingon:make-option :list
                         :short-name #\f
                         :long-name "flags"
@@ -296,16 +363,50 @@ Example:
                         :description "Print usage massages;"
                         :key :help)))
 
-(defun make-conv-command ()
+(defun make-from-uf2-options ()
+  (list
+   (clingon:make-option :flag
+                        :short-name #\y
+                        :long-name "force"
+                        :description "force overwriting an existing output file;"
+                        :key :force)
+   (clingon:make-option :flag
+                        :short-name #\h
+                        :description "Print usage massages;"
+                        :key :help)))
+
+(defun make-to-uf2-command ()
   (clingon:make-command
-   :name "conv"
-   :description "Convert between UF2 and BIN formats."
-   :options (make-conv-options)
-   :handler #'conv-handler))
+   :name "to-uf2"
+   :description "Convert a BIN file to UF2."
+   :options (make-to-uf2-options)
+   :handler #'to-uf2-handler))
+
+(defun make-from-uf2-command ()
+  (clingon:make-command
+   :name "from-uf2"
+   :description "Convert a UF2 file to BIN."
+   :options (make-from-uf2-options)
+   :handler #'from-uf2-handler))
+
+(defun info-handler (cmd)
+  (handler-case
+      (let ((input (ensure-input-file
+                    (first (clingon:command-arguments cmd)))))
+        (print-uf2-info (uf2-info input)))
+    (error (e)
+      (format *error-output* "~A~%" e)
+      (clingon:exit 255))))
+
+(defun make-info-command ()
+  (clingon:make-command
+   :name "info"
+   :description "Display UF2 file information."
+   :handler #'info-handler))
 
 (defun make-sub-commands ()
   "Return the list of uf2 sub-commands. Additional tools are added here."
-  (list (make-conv-command)))
+  (list (make-to-uf2-command) (make-from-uf2-command) (make-info-command)))
 
 (defun make-uf2-command ()
   (clingon:make-command

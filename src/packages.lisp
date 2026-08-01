@@ -27,18 +27,30 @@
    #:uf2-block-block-totals
    #:uf2-block-family-id
    #:uf2-block-payload
+   #:uf2-file-info
+   #:make-uf2-file-info
+   #:uf2-file-info-p
+   #:uf2-file-info-path
+   #:uf2-file-info-file-size
+   #:uf2-file-info-uniform-p
+   #:uf2-file-info-blocks
    #:read-u32-le
    #:write-u32-le
    #:block-check-p
+   #:decode-block-header
    #:decode-block
    #:encode-block
    ;; conversions
    #:bin-to-uf2
    #:uf2-to-bin
+   ;; inspection
+   #:uf2-info
+   #:print-uf2-info
    ;; CLI helpers
    #:parse-u32
    #:default-output-path
    #:prompt-overwrite
    #:output-overwrite-ok
+   #:print-version
    #:print-usage
    #:print-summary))

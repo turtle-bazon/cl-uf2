@@ -3,7 +3,8 @@
 Common Lisp command line converter between Microsoft [UF2](https://github.com/microsoft/uf2)
 and raw binary (BIN) formats.
 
-The executable is named `uf2` and exposes sub-commands; the current one is `conv`.
+The executable is named `uf2` and exposes sub-commands:
+`to-uf2`, `from-uf2` and `info`.
 
 ## Build
 
@@ -22,16 +23,19 @@ quickloads the `cl-uf2-tests` system and exits non-zero on any failure.
 ## Usage
 
 ```
-uf2 conv [options] <INPUT> [<OUTPUT>]
+uf2 to-uf2 [options] <INPUT> [<OUTPUT>]
+uf2 from-uf2 [options] <INPUT> [<OUTPUT>]
+uf2 info <INPUT>
 ```
 
-Converts a BIN file to UF2, or a UF2 file to BIN when `-d` is given.
+- `to-uf2` converts a BIN file to UF2.
+- `from-uf2` converts a UF2 file to BIN.
+- `info` displays header information from a UF2 file.
 
-### Options
+### `to-uf2` options
 
 | Option                | Description                                              |
 |-----------------------|----------------------------------------------------------|
-| `-d`, `--dump`        | Dump UF2 payload to binary.                              |
 | `-f`, `--flags <v>`   | Set UF2 block flags, OR-ed together; default `0x0`.      |
 | `-a`, `--address <v>` | Set target address; default `0x0`.                       |
 | `-i`, `--identify <v>`| Set family ID (sets the `FAMILY_ID_PRESENT` flag); default `0x0`. |
@@ -39,6 +43,21 @@ Converts a BIN file to UF2, or a UF2 file to BIN when `-d` is given.
 | `-F`, `--fixed`       | Keep the real payload size on the last (short) block.    |
 | `-y`, `--force`       | Overwrite an existing output file without prompting.     |
 | `-h`                  | Print usage messages.                                    |
+
+### `from-uf2` options
+
+| Option                | Description                                              |
+|-----------------------|----------------------------------------------------------|
+| `-y`, `--force`       | Overwrite an existing output file without prompting.     |
+| `-h`                  | Print usage messages.                                    |
+
+### `info` options
+
+| Option       | Description                              |
+|--------------|------------------------------------------|
+| `--help`     | Display usage information and exit.      |
+
+The `to-uf2`, `from-uf2` and `info` commands also accept `--help` and `--version`.
 
 Numeric values follow `strtoul` base-0 rules: `0x`/`0X` prefix for hexadecimal,
 a leading `0` for octal, otherwise decimal. Hex digits are case-insensitive.
@@ -50,14 +69,15 @@ Use `--force` for non-interactive use.
 ### Examples
 
 ```sh
-uf2 conv firmware.bin firmware.uf2        # BIN -> UF2 (default address 0x0)
-uf2 conv -a 0x2000 -i 0xADA52840 in.bin   # BIN -> UF2 with address and family ID
-uf2 conv -d firmware.uf2 firmware.bin     # UF2 -> BIN
+uf2 to-uf2 firmware.bin firmware.uf2         # BIN -> UF2 (default address 0x0)
+uf2 to-uf2 -a 0x2000 -i 0xADA52840 in.bin    # BIN -> UF2 with address and family ID
+uf2 from-uf2 firmware.uf2 firmware.bin       # UF2 -> BIN
+uf2 info firmware.uf2                        # show block header information
 ```
 
-When `OUTPUT` is omitted, the name is derived from the input with a `.uf2` or
-`.bin` extension; an input that already ends in the target extension gets a
-doubled one (`.uf2.uf2`, `.bin.bin`).
+When `OUTPUT` is omitted, the name is derived from the input with a `.uf2` (for
+`to-uf2`) or `.bin` (for `from-uf2`) extension; an input that already ends in
+the target extension gets a doubled one (`.uf2.uf2`, `.bin.bin`).
 
 ### Exit codes
 

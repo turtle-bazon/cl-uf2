@@ -116,10 +116,10 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           mkdir -p release-assets
-          cp linux/build/uf2  release-assets/uf2-linux-x86_64
-          cp macos/build/uf2  release-assets/uf2-macos
-          cp windows/build/uf2.exe release-assets/uf2-windows-x86_64.exe
-          ls -la release-assets
+          find linux   -type f -name 'uf2*' -exec cp {} release-assets/uf2-linux-x86_64 \;
+          find macos   -type f -name 'uf2*' -exec cp {} release-assets/uf2-macos \;
+          find windows -type f -name 'uf2*' -exec cp {} release-assets/uf2-windows-x86_64.exe \;
+          ls -laR release-assets
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" release-assets/* --clobber
           else

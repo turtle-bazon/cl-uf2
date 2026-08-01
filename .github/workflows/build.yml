@@ -90,9 +90,25 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: uf2-linux-x86_64
+          path: linux
+
+      - name: Download macOS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: uf2-macos
+          path: macos
+
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: uf2-windows-x86_64
+          path: windows
 
       - name: Publish release
         env:
@@ -100,14 +116,9 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           mkdir -p release-assets
-          while IFS= read -r f; do
-            name=$(basename "$(dirname "$(dirname "$f")")")
-            if [[ "$f" == *.exe ]]; then
-              cp "$f" "release-assets/${name}.exe"
-            else
-              cp "$f" "release-assets/${name}"
-            fi
-          done < <(find artifacts -type f -name 'uf2*')
+          cp linux/build/uf2  release-assets/uf2-linux-x86_64
+          cp macos/build/uf2  release-assets/uf2-macos
+          cp windows/build/uf2.exe release-assets/uf2-windows-x86_64.exe
           ls -la release-assets
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" release-assets/* --clobber

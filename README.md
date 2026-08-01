@@ -53,9 +53,16 @@ uf2 info <INPUT>
 
 ### `info` options
 
-| Option       | Description                              |
-|--------------|------------------------------------------|
-| `--help`     | Display usage information and exit.      |
+| Option       | Description                                              |
+|--------------|----------------------------------------------------------|
+| `-a`, `--all`    | Print every block, not only the first ten.           |
+| `-m`, `--machine`| Print machine-readable JSON output with all blocks.  |
+| `--help`     | Display usage information and exit.                      |
+
+By default `info` prints a summary and a table of the first ten blocks; `-a`
+prints all blocks. With `-m`, the output is a JSON object with the file
+metadata (`path`, `file_size`, `block_size`, `block_count`, `uniform`), the
+`first_block` summary and the full `blocks` array.
 
 The `to-uf2`, `from-uf2` and `info` commands also accept `--help` and `--version`.
 
@@ -73,6 +80,8 @@ uf2 to-uf2 firmware.bin firmware.uf2         # BIN -> UF2 (default address 0x0)
 uf2 to-uf2 -a 0x2000 -i 0xADA52840 in.bin    # BIN -> UF2 with address and family ID
 uf2 from-uf2 firmware.uf2 firmware.bin       # UF2 -> BIN
 uf2 info firmware.uf2                        # show block header information
+uf2 info -a firmware.uf2                     # show every block
+uf2 info -m firmware.uf2 > info.json         # machine-readable JSON output
 ```
 
 When `OUTPUT` is omitted, the name is derived from the input with a `.uf2` (for

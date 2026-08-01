@@ -46,6 +46,7 @@
    ;; inspection
    #:uf2-info
    #:print-uf2-info
+   #:print-uf2-info-json
    ;; CLI helpers
    #:parse-u32
    #:default-output-path

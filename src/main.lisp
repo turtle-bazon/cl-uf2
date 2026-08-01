@@ -138,9 +138,9 @@ all blocks share the same flags, payload size and family id."
          :uniform-p uniform-p
          :blocks blocks)))))
 
-(defun print-uf2-info (info)
+(defun print-uf2-info (info &key (all nil))
   "Print a summary of the UF2 file described by INFO followed by a
-table of the first (up to 10) blocks."
+table of the first (up to 10) blocks, or of every block when ALL is set."
   (let* ((blocks (uf2-file-info-blocks info))
          (n (length blocks))
          (first-block (first blocks)))
@@ -155,15 +155,68 @@ table of the first (up to 10) blocks."
     (format t "  Block  Address      Flags      Payload  Family~%")
     (loop for b in blocks
           for i from 0
-          while (< i 10)
+          while (or all (< i 10))
           do (format t "  ~5D  0x~8,'0X  0x~8,'0X  ~7D  0x~8,'0X~%"
                      (uf2-block-block-no b)
                      (uf2-block-target-address b)
                      (uf2-block-flags b)
                      (uf2-block-payload-size b)
                      (uf2-block-family-id b)))
-    (when (> n 10)
+    (when (and (not all) (> n 10))
       (format t "  ... and ~D more blocks~%" (- n 10)))))
+
+(defun json-escape (string)
+  "Return STRING with the characters special to JSON string literals escaped."
+  (with-output-to-string (out)
+    (loop for ch across string
+          do (case ch
+               (#\" (write-string "\\\"" out))
+               (#\\ (write-string "\\\\" out))
+               (#\Newline (write-string "\\n" out))
+               (#\Return (write-string "\\r" out))
+               (#\Tab (write-string "\\t" out))
+               (otherwise
+                (unless (< (char-code ch) #x20)
+                  (write-char ch out)))))))
+
+(defun print-json-block (block)
+  "Print BLOCK as a JSON object."
+  (format t "    {~%")
+  (format t "      \"block_no\": ~D,~%" (uf2-block-block-no block))
+  (format t "      \"target_address\": ~D,~%" (uf2-block-target-address block))
+  (format t "      \"flags\": ~D,~%" (uf2-block-flags block))
+  (format t "      \"payload_size\": ~D,~%" (uf2-block-payload-size block))
+  (format t "      \"family_id\": ~D~%" (uf2-block-family-id block))
+  (format t "    }"))
+
+(defun print-uf2-info-json (info)
+  "Print INFO as a JSON object including the full block list."
+  (let* ((blocks (uf2-file-info-blocks info))
+         (n (length blocks))
+         (first-block (first blocks)))
+    (format t "{~%")
+    (format t "  \"path\": \"~A\",~%" (json-escape (uf2-file-info-path info)))
+    (format t "  \"file_size\": ~D,~%" (uf2-file-info-file-size info))
+    (format t "  \"block_size\": ~D,~%" +block-size+)
+    (format t "  \"block_count\": ~D,~%" n)
+    (format t "  \"uniform\": ~A,~%" (if (uf2-file-info-uniform-p info) "true" "false"))
+    (if first-block
+        (progn
+          (format t "  \"first_block\": {~%")
+          (format t "    \"block_no\": ~D,~%" (uf2-block-block-no first-block))
+          (format t "    \"target_address\": ~D,~%" (uf2-block-target-address first-block))
+          (format t "    \"flags\": ~D,~%" (uf2-block-flags first-block))
+          (format t "    \"payload_size\": ~D,~%" (uf2-block-payload-size first-block))
+          (format t "    \"family_id\": ~D~%" (uf2-block-family-id first-block))
+          (format t "  },~%"))
+        (format t "  \"first_block\": null,~%"))
+    (format t "  \"blocks\": [~%")
+    (loop for b in blocks
+          for i from 0
+          do (print-json-block b)
+             (format t "~A~%" (if (= i (1- n)) "" ",")))
+    (format t "  ]~%")
+    (format t "}~%")))
 
 ;;;; Output path handling.
 
@@ -228,8 +281,13 @@ Options for to-uf2:
     force (-y)     force overwriting an existing output file;
     help (-h)      Print usage massages;
 
-Options for from-uf2 and info:
+Options for from-uf2:
     force (-y)     force overwriting an existing output file;
+    help (-h)      Print usage massages;
+
+Options for info:
+    all (-a)       Print all blocks, not only the first ten;
+    machine (-m)   Print machine-readable JSON output with all blocks;
     help (-h)      Print usage massages;
 
 Example:
@@ -391,17 +449,42 @@ Example:
 
 (defun info-handler (cmd)
   (handler-case
-      (let ((input (ensure-input-file
-                    (first (clingon:command-arguments cmd)))))
-        (print-uf2-info (uf2-info input)))
+      (progn
+        (when (clingon:getopt cmd :help)
+          (print-usage)
+          (clingon:exit 0))
+        (let ((input (ensure-input-file
+                      (first (clingon:command-arguments cmd)))))
+          (let ((info (uf2-info input)))
+            (if (clingon:getopt cmd :machine)
+                (print-uf2-info-json info)
+                (print-uf2-info info :all (clingon:getopt cmd :all))))))
     (error (e)
       (format *error-output* "~A~%" e)
       (clingon:exit 255))))
+
+(defun make-info-options ()
+  (list
+   (clingon:make-option :flag
+                        :short-name #\a
+                        :long-name "all"
+                        :description "Print all blocks, not only the first ten;"
+                        :key :all)
+   (clingon:make-option :flag
+                        :short-name #\m
+                        :long-name "machine"
+                        :description "Print machine-readable JSON output with all blocks;"
+                        :key :machine)
+   (clingon:make-option :flag
+                        :short-name #\h
+                        :description "Print usage massages;"
+                        :key :help)))
 
 (defun make-info-command ()
   (clingon:make-command
    :name "info"
    :description "Display UF2 file information."
+   :options (make-info-options)
    :handler #'info-handler))
 
 (defun make-sub-commands ()

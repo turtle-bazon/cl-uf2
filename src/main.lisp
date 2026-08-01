@@ -137,6 +137,10 @@ extension, the extension is doubled (.uf2.uf2 / .bin.bin)."
           title input-size family-id target-address output-size
           flags payload-size block-totals))
 
+(defun print-version (&optional (stream *standard-output*))
+  (format stream "uf2 & bin convert tools (Common Lisp) v~A~%"
+          (asdf:component-version (asdf:find-system :cl-uf2))))
+
 (defun print-usage (&optional (stream *standard-output*))
   (write-string
    "Usage: uf2 conv [--dump] [--flags=<flags>] [--address=<address>] [--identify=<identify>]
@@ -156,9 +160,9 @@ Example:
     uf2 conv firmware.bin [firmware.uf2]
     uf2 conv -d firmware.uf2 [firmware.bin]
 
-uf2 & bin convert tools (Common Lisp) v0.0.1.0
 "
-   stream))
+   stream)
+  (print-version stream))
 
 ;;;; Command-line interface.
 
@@ -298,6 +302,7 @@ uf2 & bin convert tools (Common Lisp) v0.0.1.0
   (clingon:make-command
    :name "uf2"
    :description "Microsoft UF2 & BIN format convert tools"
+   :version (asdf:component-version (asdf:find-system :cl-uf2))
    :sub-commands (make-sub-commands)
    :handler (lambda (cmd)
               (declare (ignore cmd))

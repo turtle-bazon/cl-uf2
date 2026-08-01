@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Use the prebuilt image from docker/Dockerfile: a modern SBCL compiled
+    # against Debian bullseye's old glibc, so the resulting binary runs on
+    # older Linux distributions too. Publish with publish-image.yml.
+    runs-on: ubuntu-latest
+    container: ghcr.io/${{ github.repository }}/uf2-sbcl:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: make test
+
+      - name: Check glibc floor
+        run: |
+          echo "required GLIBC: $(objdump -T build/uf2 | grep -o 'GLIBC_[0-9.]*' | sort -V | uniq | tail -1)"
+          ldd build/uf2
+
+      - name: Smoke test
+        run: |
+          ./build/uf2 --version
+          ./build/uf2 conv -a 0x2000 -i 0xADA52840 cl-uf2.asd /tmp/smoke.uf2
+          ./build/uf2 conv -d /tmp/smoke.uf2 /tmp/smoke.bin
+          ls -la /tmp/smoke.uf2 /tmp/smoke.bin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uf2-linux-x86_64
+          path: build/uf2

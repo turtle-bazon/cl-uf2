@@ -47,28 +47,29 @@
   family-id
   payload)
 
-(defun block-check-p (octets)
-  "Return non-NIL when OCTETS carry the UF2 magic numbers."
-  (and (= (read-u32-le octets 0) +magic-start0+)
-       (= (read-u32-le octets 4) +magic-start1+)
-       (= (read-u32-le octets (+ +header-size+ +payload-max+)) +magic-end+)))
+(defun block-check-p (octets &optional (start 0))
+  "Return non-NIL when OCTETS at START carry the UF2 magic numbers."
+  (and (= (read-u32-le octets start) +magic-start0+)
+       (= (read-u32-le octets (+ start 4)) +magic-start1+)
+       (= (read-u32-le octets (+ start +header-size+ +payload-max+)) +magic-end+)))
 
-(defun decode-block (octets)
-  "Decode a 512-byte UF2 block held in OCTETS.
+(defun decode-block (octets &optional (start 0))
+  "Decode a 512-byte UF2 block held in OCTETS at START.
 Signals an error when the magic numbers or the payload size are invalid."
-  (unless (block-check-p octets)
+  (unless (block-check-p octets start)
     (error "Illegal UF2 file, block not UF2 block !"))
-  (let ((payload-size (read-u32-le octets 16)))
+  (let ((payload-size (read-u32-le octets (+ start 16))))
     (unless (and (plusp payload-size) (<= payload-size +payload-max+))
       (error "Illegal UF2 file, block size invalid !"))
     (make-uf2-block
-     :flags          (read-u32-le octets 8)
-     :target-address (read-u32-le octets 12)
+     :flags          (read-u32-le octets (+ start 8))
+     :target-address (read-u32-le octets (+ start 12))
      :payload-size   payload-size
-     :block-no       (read-u32-le octets 20)
-     :block-totals   (read-u32-le octets 24)
-     :family-id      (read-u32-le octets 28)
-     :payload        (subseq octets +header-size+ (+ +header-size+ payload-size)))))
+     :block-no       (read-u32-le octets (+ start 20))
+     :block-totals   (read-u32-le octets (+ start 24))
+     :family-id      (read-u32-le octets (+ start 28))
+     :payload        (subseq octets (+ start +header-size+)
+                                  (+ start +header-size+ payload-size)))))
 
 (defun encode-block (block)
   "Encode BLOCK into a fresh 512-byte octet vector.
